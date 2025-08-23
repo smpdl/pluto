@@ -21,3 +21,4 @@ coverage/
 *.pyo
 *.orig
 *.lock
+.vite/
