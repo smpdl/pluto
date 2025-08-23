@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 .venv/
 .env
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 pluto.db
 .DS_Store
 .pytest_cache/

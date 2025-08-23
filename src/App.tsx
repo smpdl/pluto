@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, DollarSign, TrendingDown, PiggyBank, TrendingUp, Settings, User, Bell, Search } from 'lucide-react';
+import { Home, DollarSign, TrendingDown, PiggyBank, TrendingUp, Settings, User, Bell, Search, CreditCard } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
@@ -13,6 +13,7 @@ import SpendingDashboard from './components/SpendingDashboard';
 import SavingsDashboard from './components/SavingsDashboard';
 import InvestmentsDashboard from './components/InvestmentsDashboard';
 import SettingsDashboard from './components/SettingsDashboard';
+import TransactionsDashboard from './components/TransactionsDashboard';
 import LoginPage from './components/LoginPage';
 import AIChatbot from './components/AIChatbot';
 
@@ -20,6 +21,7 @@ const navigationItems = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'income', label: 'Income', icon: DollarSign },
   { id: 'spending', label: 'Spending', icon: TrendingDown },
+  { id: 'transactions', label: 'Transactions', icon: CreditCard },
   { id: 'savings', label: 'Savings', icon: PiggyBank },
   { id: 'investments', label: 'Investments', icon: TrendingUp },
   { id: 'settings', label: 'Settings', icon: Settings },
@@ -27,11 +29,13 @@ const navigationItems = [
 
 export default function App() {
   const [activeView, setActiveView] = useState('home');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return !!localStorage.getItem('access_token');
+  });
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    // Optionally clear tokens or user state here
+    localStorage.removeItem('access_token');
   };
 
   if (!isLoggedIn) {
@@ -46,6 +50,8 @@ export default function App() {
         return <IncomeDashboard />;
       case 'spending':
         return <SpendingDashboard />;
+      case 'transactions':
+        return <TransactionsDashboard />;
       case 'savings':
         return <SavingsDashboard />;
       case 'investments':

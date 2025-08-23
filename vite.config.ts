@@ -56,5 +56,14 @@
     server: {
       port: 3000,
       open: true,
+      proxy: {
+        '/auth': 'http://localhost:8000',
+        '/accounts': 'http://localhost:8000',
+        '/transactions': 'http://localhost:8000',
+        '/users': 'http://localhost:8000',
+        '/insights': 'http://localhost:8000',
+        '/fake': 'http://localhost:8000',
+        '/healthz': 'http://localhost:8000',
+      },
     },
   });

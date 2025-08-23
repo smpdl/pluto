@@ -51,12 +51,15 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:8080/auth/login", {
+      const res = await fetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginEmail, password: loginPassword })
       });
       if (res.ok) {
+        const data = await res.json();
+        // Store the token in localStorage for future requests
+        localStorage.setItem('access_token', data.access_token);
         setLoginError("");
         onLogin();
       } else {
@@ -85,7 +88,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setIsLoading(true);
     try {
       const full_name = `${signupFirstName} ${signupLastName}`.trim();
-      const res = await fetch("http://localhost:8080/auth/signup", {
+      const res = await fetch("/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: signupEmail, password: signupPassword, full_name })

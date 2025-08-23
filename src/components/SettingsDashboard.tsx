@@ -10,11 +10,12 @@ import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { User, CreditCard, Bell, Shield, Globe, Trash2, Plus, Link as LinkIcon } from 'lucide-react';
 
-// Mock data
-const connectedAccounts = [
-  { id: 1, name: 'Chase Checking', type: 'checking', balance: 3200, last4: '4521', connected: '2023-10-15' },
-  { id: 2, name: 'Discover Credit', type: 'credit', balance: -1250, last4: '8734', connected: '2023-10-20' },
-  { id: 3, name: 'Ally Savings', type: 'savings', balance: 12450, last4: '9876', connected: '2023-11-01' },
+
+const ACCOUNT_TYPES = [
+  { value: 'checking', label: 'Checking' },
+  { value: 'savings', label: 'Savings' },
+  { value: 'trading', label: 'Trading' },
+  { value: 'credit', label: 'Credit' },
 ];
 
 const notificationSettings = [
@@ -28,6 +29,65 @@ const notificationSettings = [
 export default function SettingsDashboard() {
   const [notifications, setNotifications] = useState(notificationSettings);
   const [isEditing, setIsEditing] = useState(false);
+  const [accounts, setAccounts] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [linkType, setLinkType] = useState('checking');
+  const [linkUsername, setLinkUsername] = useState('');
+  const [linkPassword, setLinkPassword] = useState('');
+  const [linkNickname, setLinkNickname] = useState('');
+  const [linkLoading, setLinkLoading] = useState(false);
+
+  const fetchAccounts = () => {
+    const token = localStorage.getItem('access_token');
+    fetch('/accounts', { 
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(res => res.json())
+      .then(setAccounts);
+  };
+
+  React.useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const handleLinkAccount = async () => {
+    setLinkLoading(true);
+    try {
+          const token = localStorage.getItem('access_token');
+    const response = await fetch('/accounts/link', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        username: linkUsername,
+        password: linkPassword,
+        account_type: linkType,
+        nickname: linkNickname || null
+      })
+    });
+      
+      if (!response.ok) {
+        throw new Error('Failed to link account');
+      }
+      
+      setShowModal(false);
+      setLinkUsername('');
+      setLinkPassword('');
+      setLinkNickname('');
+      setLinkType('checking');
+      fetchAccounts();
+    } catch (error) {
+      console.error('Error linking account:', error);
+      alert('Failed to link account. Please try again.');
+    } finally {
+      setLinkLoading(false);
+    }
+  };
 
   const toggleNotification = (id: string) => {
     setNotifications(prev => 
@@ -138,30 +198,33 @@ export default function SettingsDashboard() {
                 Manage your linked bank accounts and credit cards
               </CardDescription>
             </div>
-            <Button size="sm" className="bg-primary hover:bg-primary/90">
+            <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => setShowModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Link Account
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {connectedAccounts.map((account) => (
+          {accounts.map((account) => (
             <div key={account.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
               <div className="flex items-center space-x-4">
                 <div className="p-3 bg-primary/10 rounded-lg">
                   <CreditCard className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h4 className="font-medium">{account.name}</h4>
+                  <h4 className="font-medium">{account.nickname || account.name}</h4>
                   <p className="text-sm text-muted-foreground">
-                    ••••{account.last4} • Connected {new Date(account.connected).toLocaleDateString()}
+                    ••••{account.mask}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {account.name}
                   </p>
                 </div>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="text-right">
-                  <p className="font-semibold">
-                    {account.balance < 0 ? '-' : ''}${Math.abs(account.balance).toLocaleString()}
+                  <p className="font-semibold text-sm">
+                    ${parseFloat(account.balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                   <Badge 
                     variant={account.type === 'checking' ? 'default' : account.type === 'savings' ? 'secondary' : 'destructive'}
@@ -176,6 +239,54 @@ export default function SettingsDashboard() {
               </div>
             </div>
           ))}
+          {showModal && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
+              <div className="bg-card p-6 rounded-xl shadow-lg min-w-[300px]">
+                <h3 className="mb-4 font-semibold">Connect with Plaid (Fake)</h3>
+                <div className="mb-3">
+                  <Label>Account Type</Label>
+                  <select value={linkType} onChange={e => setLinkType(e.target.value)} className="w-full mt-1 p-2 rounded-md border">
+                    {ACCOUNT_TYPES.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mb-3">
+                  <Label>Username</Label>
+                  <Input
+                    type="text"
+                    value={linkUsername}
+                    onChange={e => setLinkUsername(e.target.value)}
+                    placeholder="Enter username"
+                  />
+                </div>
+                <div className="mb-3">
+                  <Label>Password</Label>
+                  <Input
+                    type="password"
+                    value={linkPassword}
+                    onChange={e => setLinkPassword(e.target.value)}
+                    placeholder="Enter password"
+                  />
+                </div>
+                <div className="mb-3">
+                  <Label>Nickname (Optional)</Label>
+                  <Input
+                    type="text"
+                    value={linkNickname}
+                    onChange={e => setLinkNickname(e.target.value)}
+                    placeholder="e.g., My Checking"
+                  />
+                </div>
+                <div className="flex space-x-2 mt-4">
+                  <Button onClick={handleLinkAccount} disabled={linkLoading || !linkUsername || !linkPassword} className="bg-primary hover:bg-primary/90">
+                    {linkLoading ? "Connecting..." : "Connect"}
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
