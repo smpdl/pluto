@@ -1,7 +1,7 @@
-python>=3.11,<3.12
+
 fastapi>=0.111.0
 sqlalchemy>=2.0.0
-pydantic>=2.0.0
+pydantic[email]>=2.0.0
 python-jose
 passlib[bcrypt]
 uvicorn

@@ -29,6 +29,11 @@ export default function App() {
   const [activeView, setActiveView] = useState('home');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    // Optionally clear tokens or user state here
+  };
+
   if (!isLoggedIn) {
     return <LoginPage onLogin={() => setIsLoggedIn(true)} />;
   }
@@ -130,6 +135,11 @@ export default function App() {
                   className="pl-10 w-80 bg-input-background border-border"
                 />
               </div>
+
+              {/* Logout Button */}
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                Logout
+              </Button>
               
               {/* Notifications */}
               <Button variant="ghost" size="sm" className="relative">
