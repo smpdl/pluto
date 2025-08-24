@@ -18,6 +18,14 @@
 	individuals who would like to effectivley manage their personal finance
 
 ---
+----
+## Design 
+<img width="417" height="480" alt="image" src="https://github.com/user-attachments/assets/f6a6400e-17d4-487d-9a00-26a9c502a6d2" />
+
+<img width="2143" height="500" alt="image" src="https://github.com/user-attachments/assets/cbbedb2e-a001-4783-8d23-dba812d66e67" />
+
+----
+
 
 ## Table of Contents
 
@@ -178,6 +186,8 @@ We welcome contributions! Please read our [CONTRIBUTING.md](docs/CONTRIBUTING.md
 | **Krishtina**  | Frontend development, UI/UX design and implementation, responsiveness, user flow, presentation slide deck, and demo |
 
 ---
+
+
 
 ## License
 
