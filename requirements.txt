@@ -8,3 +8,5 @@ uvicorn
 python-dotenv==1.1.0
 ruff
 pytest
+google-generativeai
+httpx

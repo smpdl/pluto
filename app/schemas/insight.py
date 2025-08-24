@@ -1,4 +1,13 @@
 from pydantic import BaseModel
+from typing import Optional
+import datetime
+
+class GeminiInsightOut(BaseModel):
+    id: int
+    user_id: int
+    created_at: datetime.datetime
+    insights_json: str
+from pydantic import BaseModel
 from typing import List, Optional
 from decimal import Decimal
 
