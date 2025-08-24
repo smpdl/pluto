@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { PiggyBank, Target, Trophy, Calendar, Plus, Clock, TrendingUp, Zap, Gift, Star } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { PiggyBank, Target, Trophy, Calendar, Plus, Clock, TrendingUp, Zap, Gift, Star, RefreshCw } from 'lucide-react';
 
 // Mock data
 const savingsGoals = [
@@ -141,14 +143,246 @@ const aiMotivation = [
   }
 ];
 
+interface Transaction {
+  account_id: string;
+  transaction_id: string;
+  name: string;
+  merchant_name: string | null;
+  amount: number;
+  date: string;
+  category: string;
+  pending: boolean;
+}
+
+interface Account {
+  id: number;
+  name: number;
+  nickname: string | null;
+  type: string;
+  mask: string;
+  balance: number;
+}
+
 export default function SavingsDashboard() {
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [showNewGoal, setShowNewGoal] = useState(false);
-  const totalSavings = savingsGoals.reduce((sum, goal) => sum + goal.current, 0);
-  const totalTargets = savingsGoals.reduce((sum, goal) => sum + goal.target, 0);
-  const overallProgress = (totalSavings / totalTargets) * 100;
+  const [newGoal, setNewGoal] = useState({
+    name: '',
+    target: '',
+    deadline: '',
+    monthlyContribution: '',
+    priority: 'medium',
+    category: 'general'
+  });
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  useEffect(() => {
+    if (selectedAccounts.length > 0 && accounts.length > 0) {
+      fetchTransactions();
+    }
+  }, [selectedAccounts, accounts]);
+
+  const fetchAccounts = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      
+      const response = await fetch('/accounts', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAccounts(data);
+        if (data.length > 0) {
+          setSelectedAccounts(data.map(acc => acc.mask));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    setLoading(true);
+    try {
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      
+      const allTxns: Transaction[] = [];
+      
+      for (const accountMask of selectedAccounts) {
+        try {
+          const url = `/fake/plaid/transactions?account_id=${accountMask}&start_date=${startDate}&end_date=${endDate}&limit=100`;
+          const response = await fetch(url, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            allTxns.push(...(data.transactions || []));
+          }
+        } catch (error) {
+          console.error(`Error fetching transactions for account ${accountMask}:`, error);
+        }
+      }
+      
+      setTransactions(allTxns);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateGoal = () => {
+    if (!newGoal.name || !newGoal.target || !newGoal.deadline || !newGoal.monthlyContribution) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    const goal = {
+      id: Date.now() + Math.random(), // Ensure unique ID generation
+      name: newGoal.name,
+      target: parseFloat(newGoal.target),
+      current: 0, // Start with 0 progress
+      deadline: newGoal.deadline,
+      color: getGoalColor(newGoal.category),
+      priority: newGoal.priority,
+      monthlyContribution: parseFloat(newGoal.monthlyContribution),
+      category: newGoal.category
+    };
+
+    // Add to savings goals (in a real app, this would save to backend)
+    savingsGoals.push(goal);
+    
+    // Reset form
+    setNewGoal({
+      name: '',
+      target: '',
+      deadline: '',
+      monthlyContribution: '',
+      priority: 'medium',
+      category: 'general'
+    });
+    
+    setShowNewGoal(false);
+    
+    // Force re-render (in a real app, you'd update state properly)
+    window.location.reload();
+  };
+
+  const getGoalColor = (category: string) => {
+    const colors = ['#059669', '#1e40af', '#7c3aed', '#dc2626', '#ea580c', '#65a30d', '#0891b2'];
+    return colors[category.length % colors.length];
+  };
+
+  // Calculate real savings data from transactions
+  const savingsTransactions = transactions.filter(t => t.amount > 0 && ['savings', 'deposit', 'interest', 'dividend'].includes(t.category));
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
   
+  const currentMonthSavings = savingsTransactions
+    .filter(t => {
+      const txnDate = new Date(t.date);
+      return txnDate.getMonth() === currentMonth && txnDate.getFullYear() === currentYear;
+    })
+    .reduce((sum, t) => {
+      const amount = parseFloat(t.amount) || 0;
+      return sum + amount;
+    }, 0);
+
+  // Calculate total savings from account balances
+  console.log('Accounts data:', accounts);
+  console.log('Account balances:', accounts.map(acc => ({ name: acc.name, balance: acc.balance, type: typeof acc.balance })));
+  
+  const totalSavings = accounts.reduce((sum, acc) => {
+    const balance = parseFloat(acc.balance) || 0;
+    console.log(`Processing account ${acc.name}: balance=${acc.balance}, parsed=${balance}, running sum=${sum}`);
+    return sum + balance;
+  }, 0);
+  
+  console.log('Final totalSavings:', totalSavings);
+  
+  const totalTargets = savingsGoals.reduce((sum, goal) => sum + goal.target, 0);
+  const overallProgress = totalTargets > 0 ? (totalSavings / totalTargets) * 100 : 0;
+  
+  // Check authentication
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Savings Dashboard</h1>
+        <p className="text-muted-foreground mb-4">Please log in to view your savings data</p>
+      </div>
+    );
+  }
+
+  // Show loading state
+  if (loading && accounts.length === 0) {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Savings Dashboard</h1>
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          <span className="text-muted-foreground">Loading savings data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show no accounts state
+  if (accounts.length === 0 && !loading) {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Savings Dashboard</h1>
+        <p className="text-muted-foreground mb-4">No accounts found. Link your first account to view savings data.</p>
+        <Button onClick={() => window.location.hash = '#settings'} className="bg-primary text-primary-foreground">
+          <PiggyBank className="h-4 w-4 mr-2" />
+          Link Account
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Savings Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Track your savings goals and progress from linked accounts
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={fetchTransactions}
+          disabled={loading}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="border-0 shadow-sm bg-gradient-to-br from-success/5 to-primary/5">
@@ -204,8 +438,8 @@ export default function SavingsDashboard() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">This Month</p>
-                <p className="text-2xl font-semibold">$1,250</p>
-                <p className="text-xs text-success">+15% vs target</p>
+                <p className="text-2xl font-semibold">${currentMonthSavings.toLocaleString()}</p>
+                <p className="text-xs text-success">Savings from transactions</p>
               </div>
             </div>
           </CardContent>
@@ -224,7 +458,7 @@ export default function SavingsDashboard() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {aiMotivation.map((motivation, index) => (
-              <div key={index} className="p-4 bg-card rounded-lg space-y-3">
+              <div key={`${motivation.type}-${index}`} className="p-4 bg-card rounded-lg space-y-3">
                 <div className="flex items-start space-x-2">
                   {motivation.type === 'encouragement' && <Trophy className="h-5 w-5 text-success mt-0.5" />}
                   {motivation.type === 'insight' && <TrendingUp className="h-5 w-5 text-primary mt-0.5" />}
@@ -318,6 +552,112 @@ export default function SavingsDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* New Goal Dialog */}
+      <Dialog open={showNewGoal} onOpenChange={setShowNewGoal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create New Savings Goal</DialogTitle>
+            <DialogDescription>
+              Set a new financial goal and track your progress towards it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Goal Name
+              </Label>
+              <Input
+                id="name"
+                value={newGoal.name}
+                onChange={(e) => setNewGoal({...newGoal, name: e.target.value})}
+                placeholder="e.g., Emergency Fund"
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="target" className="text-right">
+                Target Amount
+              </Label>
+              <Input
+                id="target"
+                type="number"
+                value={newGoal.target}
+                onChange={(e) => setNewGoal({...newGoal, target: e.target.value})}
+                placeholder="0.00"
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="deadline" className="text-right">
+                Deadline
+              </Label>
+              <Input
+                id="deadline"
+                type="date"
+                value={newGoal.deadline}
+                onChange={(e) => setNewGoal({...newGoal, deadline: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="monthlyContribution" className="text-right">
+                Monthly Contribution
+              </Label>
+              <Input
+                id="monthlyContribution"
+                type="number"
+                value={newGoal.monthlyContribution}
+                onChange={(e) => setNewGoal({...newGoal, monthlyContribution: e.target.value})}
+                placeholder="0.00"
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="priority" className="text-right">
+                Priority
+              </Label>
+              <Select value={newGoal.priority} onValueChange={(value) => setNewGoal({...newGoal, priority: value})}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="category" className="text-right">
+                Category
+              </Label>
+              <Select value={newGoal.category} onValueChange={(value) => setNewGoal({...newGoal, category: value})}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General</SelectItem>
+                  <SelectItem value="emergency">Emergency Fund</SelectItem>
+                  <SelectItem value="vacation">Vacation</SelectItem>
+                  <SelectItem value="home">Home</SelectItem>
+                  <SelectItem value="car">Car</SelectItem>
+                  <SelectItem value="education">Education</SelectItem>
+                  <SelectItem value="retirement">Retirement</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowNewGoal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateGoal}>
+              Create Goal
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Spending Goals (Budgets) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

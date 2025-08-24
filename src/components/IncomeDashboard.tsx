@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
-import { DollarSign, TrendingUp, ArrowUpRight, Calendar, Plus, Brain, Lightbulb, Target } from 'lucide-react';
+import { DollarSign, TrendingUp, ArrowUpRight, Calendar, Plus, Brain, Lightbulb, Target, RefreshCw } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from 'recharts';
 
 // Mock data
@@ -79,17 +79,229 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
   );
 };
 
+interface Transaction {
+  account_id: string;
+  transaction_id: string;
+  name: string;
+  merchant_name: string | null;
+  amount: number;
+  date: string;
+  category: string;
+  pending: boolean;
+}
+
+interface Account {
+  id: number;
+  name: string;
+  nickname: string | null;
+  type: string;
+  mask: string;
+  balance: number;
+}
+
 export default function IncomeDashboard() {
-  const totalIncome = incomeSourcesData.reduce((sum, item) => sum + item.value, 0);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  useEffect(() => {
+    if (selectedAccounts.length > 0 && accounts.length > 0) {
+      fetchTransactions();
+    }
+  }, [selectedAccounts, accounts]);
+
+  const fetchAccounts = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      
+      const response = await fetch('/accounts', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAccounts(data);
+        if (data.length > 0) {
+          setSelectedAccounts(data.map(acc => acc.mask));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    setLoading(true);
+    try {
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      
+      const allTxns: Transaction[] = [];
+      
+      for (const accountMask of selectedAccounts) {
+        try {
+          const url = `/fake/plaid/transactions?account_id=${accountMask}&start_date=${startDate}&end_date=${endDate}&limit=100`;
+          const response = await fetch(url, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            allTxns.push(...(data.transactions || []));
+          }
+        } catch (error) {
+          console.error(`Error fetching transactions for account ${accountMask}:`, error);
+        }
+      }
+      
+      setTransactions(allTxns);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper function for category colors
+  const getCategoryColor = (category: string) => {
+    const colors = ['#1e40af', '#059669', '#7c3aed', '#dc2626', '#ea580c', '#65a30d', '#0891b2'];
+    return colors[category.length % colors.length];
+  };
+
+  // Calculate real income data from transactions
+  const incomeTransactions = transactions.filter(t => t.amount > 0);
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  
+  const currentMonthIncome = incomeTransactions
+    .filter(t => {
+      const txnDate = new Date(t.date);
+      return txnDate.getMonth() === currentMonth && txnDate.getFullYear() === currentYear;
+    })
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const incomeByCategory = incomeTransactions.reduce((acc, t) => {
+    acc[t.category] = (acc[t.category] || 0) + t.amount;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const incomeSourcesData = Object.entries(incomeByCategory)
+    .map(([category, amount]) => ({
+      name: category.charAt(0).toUpperCase() + category.slice(1),
+      value: amount,
+      color: getCategoryColor(category)
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+
+  const monthlyIncomeData = Array.from({ length: 12 }, (_, i) => {
+    const month = new Date(currentYear, i, 1);
+    const monthName = month.toLocaleDateString('en-US', { month: 'short' });
+    const monthIncome = incomeTransactions
+      .filter(t => {
+        const txnDate = new Date(t.date);
+        return txnDate.getMonth() === i && txnDate.getFullYear() === currentYear;
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    return {
+      month: monthName,
+      income: monthIncome,
+      salary: incomeByCategory['salary'] || 0,
+      freelance: incomeByCategory['freelance'] || 0,
+      investments: incomeByCategory['investment'] || 0
+    };
+  });
+
+  const upcomingIncome = [
+    { source: 'Salary', amount: incomeByCategory['salary'] || 0, date: 'Next Payday', status: 'confirmed' },
+    { source: 'Investments', amount: incomeByCategory['investment'] || 0, date: 'Monthly', status: 'estimated' },
+    { source: 'Other Income', amount: (currentMonthIncome - (incomeByCategory['salary'] || 0) - (incomeByCategory['investment'] || 0)), date: 'Ongoing', status: 'estimated' },
+  ].filter(item => item.amount > 0);
+
+  const totalIncome = currentMonthIncome;
+
+  // Check authentication
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Income Dashboard</h1>
+        <p className="text-muted-foreground mb-4">Please log in to view your income data</p>
+      </div>
+    );
+  }
+
+  // Show loading state
+  if (loading && accounts.length === 0) {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Income Dashboard</h1>
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          <span className="text-muted-foreground">Loading income data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show no accounts state
+  if (accounts.length === 0 && !loading) {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Income Dashboard</h1>
+        <p className="text-muted-foreground mb-4">No accounts found. Link your first account to view income data.</p>
+        <Button onClick={() => window.location.hash = '#settings'} className="bg-primary text-primary-foreground">
+          <DollarSign className="h-4 w-4 mr-2" />
+          Link Account
+        </Button>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">
       {/* Header Stats */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Income Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Track your income sources and trends from linked accounts
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={fetchTransactions}
+          disabled={loading}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="md:col-span-2 border-0 shadow-sm bg-gradient-to-br from-success/5 to-primary/5">
           <CardHeader>
             <CardTitle>Current Month Income</CardTitle>
-            <CardDescription>December 2024</CardDescription>
+            <CardDescription>{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-4">

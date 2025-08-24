@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Slider } from './ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { CreditCard, TrendingDown, ArrowDownRight, ArrowUpRight, ShoppingCart, Car, Home, Coffee, MoreHorizontal, X, Brain, Calendar, Settings, Target, AlertTriangle, TrendingUp } from 'lucide-react';
+import { CreditCard, TrendingDown, ArrowDownRight, ArrowUpRight, ShoppingCart, Car, Home, Coffee, MoreHorizontal, X, Brain, Calendar, Settings, Target, AlertTriangle, TrendingUp, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 // Mock data
@@ -93,15 +93,247 @@ const recentTransactions = [
   { id: 5, merchant: 'Shell', category: 'Transportation', amount: -45.80, date: '2024-12-20', type: 'card' },
 ];
 
+interface Transaction {
+  account_id: string;
+  transaction_id: string;
+  name: string;
+  merchant_name: string | null;
+  amount: number;
+  date: string;
+  category: string;
+  pending: boolean;
+}
+
+interface Account {
+  id: number;
+  name: string;
+  nickname: string | null;
+  type: string;
+  mask: string;
+  balance: number;
+}
+
 export default function SpendingDashboard() {
-  const totalSpending = categorySpending.reduce((sum, item) => sum + item.amount, 0);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  useEffect(() => {
+    if (selectedAccounts.length > 0 && accounts.length > 0) {
+      fetchTransactions();
+    }
+  }, [selectedAccounts, accounts]);
+
+  // Helper functions for category styling
+  const getCategoryColor = (category: string) => {
+    const colors = ['#1e40af', '#059669', '#7c3aed', '#dc2626', '#ea580c', '#65a30d', '#0891b2'];
+    return colors[category.length % colors.length];
+  };
+
+  const getCategoryIcon = (category: string) => {
+    const iconMap: { [key: string]: any } = {
+      'groceries': ShoppingCart,
+      'dining': Coffee,
+      'transport': Car,
+      'rent': Home,
+      'utilities': Home,
+      'shopping': ShoppingCart,
+      'entertainment': Coffee,
+      'health': Target,
+      'subscriptions': CreditCard
+    };
+    return iconMap[category] || MoreHorizontal;
+  };
+
+  const fetchAccounts = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      
+      const response = await fetch('/accounts', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAccounts(data);
+        if (data.length > 0) {
+          setSelectedAccounts(data.map(acc => acc.mask));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    setLoading(true);
+    try {
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      
+      const allTxns: Transaction[] = [];
+      
+      for (const accountMask of selectedAccounts) {
+        try {
+          const url = `/fake/plaid/transactions?account_id=${accountMask}&start_date=${startDate}&end_date=${endDate}&limit=100`;
+          const response = await fetch(url, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            allTxns.push(...(data.transactions || []));
+          }
+        } catch (error) {
+          console.error(`Error fetching transactions for account ${accountMask}:`, error);
+        }
+      }
+      
+      setTransactions(allTxns);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate real spending data from transactions
+  const spendingTransactions = transactions.filter(t => t.amount < 0);
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  
+  const currentMonthSpending = spendingTransactions
+    .filter(t => {
+      const txnDate = new Date(t.date);
+      return txnDate.getMonth() === currentMonth && txnDate.getFullYear() === currentYear;
+    })
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+  const spendingByCategory = spendingTransactions.reduce((acc, t) => {
+    acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Create category spending data with budgets (estimated)
+  const categorySpending = Object.entries(spendingByCategory)
+    .map(([category, amount]) => ({
+      category: category.charAt(0).toUpperCase() + category.slice(1),
+      amount: amount,
+      budget: Math.round(amount * 1.2), // Estimate budget as 20% more than current spending
+      color: getCategoryColor(category),
+      icon: getCategoryIcon(category)
+    }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 5);
+
+  const monthlyTrend = Array.from({ length: 12 }, (_, i) => {
+    const month = new Date(currentYear, i, 1);
+    const monthName = month.toLocaleDateString('en-US', { month: 'short' });
+    const monthSpending = spendingTransactions
+      .filter(t => {
+        const txnDate = new Date(t.date);
+        return txnDate.getMonth() === i && txnDate.getFullYear() === currentYear;
+      })
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    
+    return {
+      month: monthName,
+      amount: monthSpending
+    };
+  });
+
+  const recentTransactions = spendingTransactions
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5)
+    .map(t => ({
+      id: t.transaction_id,
+      merchant: t.merchant_name || t.name,
+      category: t.category,
+      amount: t.amount,
+      date: t.date,
+      type: 'card'
+    }));
+
+  const totalSpending = currentMonthSpending;
   const totalBudget = categorySpending.reduce((sum, item) => sum + item.budget, 0);
-  const totalSubscriptions = activeSubscriptions
-    .filter(sub => sub.status === 'active')
-    .reduce((sum, sub) => sum + sub.amount, 0);
+  const totalSubscriptions = 0; // Will be calculated from recurring transactions if needed
+
+  // Check authentication
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Spending Dashboard</h1>
+        <p className="text-muted-foreground mb-4">Please log in to view your spending data</p>
+      </div>
+    );
+  }
+
+  // Show loading state
+  if (loading && accounts.length === 0) {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Spending Dashboard</h1>
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          <span className="text-muted-foreground">Loading spending data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show no accounts state
+  if (accounts.length === 0 && !loading) {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold mb-4">Spending Dashboard</h1>
+        <p className="text-muted-foreground mb-4">No accounts found. Link your first account to view spending data.</p>
+        <Button onClick={() => window.location.hash = '#settings'} className="bg-primary text-primary-foreground">
+          <TrendingDown className="h-4 w-4 mr-2" />
+          Link Account
+        </Button>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Spending Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Track your spending patterns and budgets from linked accounts
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={fetchTransactions}
+          disabled={loading}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="md:col-span-2 border-0 shadow-sm bg-gradient-to-br from-primary/5 to-destructive/5">
