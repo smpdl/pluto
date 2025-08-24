@@ -1,0 +1,42 @@
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with crescent moon effect -->
+  <defs>
+    <clipPath id="crescent">
+      <circle cx="30" cy="30" r="25"/>
+    </clipPath>
+  </defs>
+  
+  <!-- Main circle -->
+  <circle cx="30" cy="30" r="25" fill="#1e40af" stroke="#1e40af" stroke-width="2"/>
+  
+  <!-- Crescent moon effect -->
+  <circle cx="25" cy="30" r="20" fill="#fef3c7" clip-path="url(#crescent)"/>
+  
+  <!-- Smiling face -->
+  <g fill="#1e40af">
+    <!-- Eyes -->
+    <circle cx="35" cy="25" r="2"/>
+    <circle cx="42" cy="25" r="2"/>
+    <!-- Smile -->
+    <path d="M 35 35 Q 38.5 40 42 35" stroke="#1e40af" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Glow effect -->
+  <circle cx="30" cy="30" r="25" fill="none" stroke="#1e40af" stroke-width="1" opacity="0.3">
+    <animate attributeName="opacity" values="0.3;0.6;0.3" dur="3s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Pluto text -->
+  <text x="70" y="35" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#1e40af">
+    Pluto
+  </text>
+  
+  <!-- AI badge -->
+  <rect x="130" y="15" width="30" height="18" rx="4" fill="#1e40af"/>
+  <text x="145" y="27" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white" text-anchor="middle">
+    AI
+  </text>
+  
+  <!-- Badge animation -->
+  <animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" dur="2s" repeatCount="indefinite"/>
+</svg>

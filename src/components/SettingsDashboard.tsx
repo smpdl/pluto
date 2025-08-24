@@ -97,6 +97,34 @@ export default function SettingsDashboard() {
     );
   };
 
+  const deleteAccount = async (accountId: number) => {
+    if (!confirm('Are you sure you want to delete this account? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`/accounts/${accountId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        console.log('Account deleted successfully');
+        fetchAccounts(); // Refresh the accounts list
+      } else {
+        console.error('Failed to delete account:', response.status);
+        alert('Failed to delete account. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      alert('Error deleting account. Please try again.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Profile Settings */}
@@ -233,7 +261,12 @@ export default function SettingsDashboard() {
                     {account.type}
                   </Badge>
                 </div>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/80">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-destructive hover:text-destructive/80"
+                  onClick={() => deleteAccount(account.id)}
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

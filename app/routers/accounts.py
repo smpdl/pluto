@@ -90,3 +90,28 @@ def list_accounts(db: Session = Depends(get_db), current: User = Depends(get_cur
             balance=r.balance
         ) for r in rows
     ]
+
+@router.delete("/{account_id}")
+def delete_account(
+    account_id: int,
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user)
+):
+    """Delete an account for the current user"""
+    # Find the account and verify ownership
+    account = db.query(Account).filter(
+        Account.id == account_id,
+        Account.user_id == current.id
+    ).first()
+    
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found or access denied")
+    
+    try:
+        # Delete the account
+        db.delete(account)
+        db.commit()
+        return {"message": "Account deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete account: {str(e)}")

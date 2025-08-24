@@ -55,6 +55,7 @@
     },
     server: {
       port: 3000,
+      strictPort: true,
       open: true,
       proxy: {
         '/auth': 'http://localhost:8080',
