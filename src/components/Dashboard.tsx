@@ -192,22 +192,22 @@ export default function Dashboard() {
                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                   }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="income" 
-                  stackId="1" 
-                  stroke="hsl(var(--chart-2))" 
-                  fill="hsl(var(--chart-2))"
-                  fillOpacity={0.3}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="spending" 
-                  stackId="2" 
-                  stroke="hsl(var(--chart-1))" 
-                  fill="hsl(var(--chart-1))"
-                  fillOpacity={0.3}
-                />
+                  <Area 
+                    type="monotone" 
+                    dataKey="income" 
+                    stackId="1" 
+                    stroke="#22c55e" 
+                    fill="#22c55e"
+                    fillOpacity={0.3}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="spending" 
+                    stackId="2" 
+                    stroke="#ef4444" 
+                    fill="#ef4444"
+                    fillOpacity={0.3}
+                  />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>

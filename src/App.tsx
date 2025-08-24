@@ -203,8 +203,7 @@ export default function App() {
         {/* Header */}
         <header className="bg-gradient-to-r from-white via-yellow-50/30 to-blue-50/30 border-b border-border/50 px-6 py-4 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <PlutoLogoImage size="md" className="mr-2" />
+            <div className="flex items-center">
               <h1 className="text-2xl font-semibold text-foreground">
                 {navigationItems.find(item => item.id === activeView)?.label || 'Dashboard'}
               </h1>
@@ -347,21 +346,8 @@ export default function App() {
 
         {/* Content */}
         <main className="flex-1 overflow-auto bg-gradient-to-br from-yellow-50/50 via-white to-blue-50/30 p-6 relative">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-5">
-            <div 
-              className="absolute inset-0" 
-              style={{
-                backgroundImage: 'radial-gradient(circle at 25% 25%, #3b82f6 1px, transparent 1px), radial-gradient(circle at 75% 75%, #f59e0b 1px, transparent 1px)',
-                backgroundSize: '50px 50px, 30px 30px'
-              }}
-            ></div>
-          </div>
-          
-          {/* Watermark Logo */}
-          <div className="absolute bottom-4 right-4 opacity-10">
-            <PlutoLogoImage size="lg" className="h-20 w-auto" />
-          </div>
+    {/* Background Pattern Removed */}
+    {/* Watermark Logo Removed */}
           
           {/* Content with relative positioning */}
           <div className="relative z-10">

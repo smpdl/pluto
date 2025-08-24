@@ -8,9 +8,9 @@ import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis
 
 // Mock data
 const incomeSourcesData = [
-  { name: 'Salary', value: 4200, color: '#1e40af' },
-  { name: 'Freelance', value: 800, color: '#059669' },
-  { name: 'Investments', value: 200, color: '#7c3aed' },
+  { name: 'Salary', value: 4200, color: '#22c55e' }, // green
+  { name: 'Freelance', value: 800, color: '#22c55e' }, // green
+  { name: 'Investments', value: 200, color: '#22c55e' }, // green
 ];
 
 const incomeHistoryData = [
@@ -179,8 +179,13 @@ export default function IncomeDashboard() {
 
   // Helper function for category colors
   const getCategoryColor = (category: string) => {
-    const colors = ['#1e40af', '#059669', '#7c3aed', '#dc2626', '#ea580c', '#65a30d', '#0891b2'];
-    return colors[category.length % colors.length];
+    if (category.toLowerCase().includes('income') || category.toLowerCase().includes('salary') || category.toLowerCase().includes('freelance') || category.toLowerCase().includes('investment')) {
+      return '#22c55e'; // green for income
+    }
+    if (category.toLowerCase().includes('spending') || category.toLowerCase().includes('expense') || category.toLowerCase().includes('purchase')) {
+      return '#ef4444'; // red for spending
+    }
+    return '#a3a3a3'; // neutral for others
   };
 
   // Calculate real income data from transactions
@@ -203,10 +208,10 @@ export default function IncomeDashboard() {
   const incomeSourcesData = Object.entries(incomeByCategory)
     .map(([category, amount]) => ({
       name: category.charAt(0).toUpperCase() + category.slice(1),
-      value: amount,
+      value: Number(amount),
       color: getCategoryColor(category)
     }))
-    .sort((a, b) => b.value - a.value)
+    .sort((a, b) => Number(b.value) - Number(a.value))
     .slice(0, 5);
 
   const monthlyIncomeData = Array.from({ length: 12 }, (_, i) => {
@@ -473,7 +478,7 @@ export default function IncomeDashboard() {
                     />
                     <span className="text-sm">{item.name}</span>
                   </div>
-                  <span className="text-sm font-medium">${item.value.toLocaleString()}</span>
+                  <span className="text-sm font-medium">${typeof item.value === 'number' ? item.value.toLocaleString() : Number(item.value).toLocaleString()}</span>
                 </div>
               ))}
             </div>
