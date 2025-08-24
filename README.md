@@ -168,6 +168,17 @@ We welcome contributions! Please read our [CONTRIBUTING.md](docs/CONTRIBUTING.md
 
 ---
 
+---
+## Team Members & Contributions
+
+| Name       | Contributions                                                                 |
+|------------|-------------------------------------------------------------------------------|
+| **Samip**      | System design, core AI/agentic functionalities & implementation, backend support, troubleshooting critical issues |
+| **Manish**     | Backend API development, database management, server logic, authentication, deployment, and some frontend integration |
+| **Krishtina**  | Frontend development, UI/UX design and implementation, responsiveness, user flow, presentation slide deck, and demo |
+
+---
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).  
