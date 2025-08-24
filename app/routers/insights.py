@@ -1,3 +1,5 @@
+from fastapi.responses import JSONResponse
+from app.ai.insights import get_financial_insights
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
@@ -439,3 +441,9 @@ def pluto_score(db: Session = Depends(get_db), current: User = Depends(get_curre
         savings_rate=round(savings_rate, 3),
         category_diversity=distinct_cats,
     )
+
+@router.get("/gemini-insights", response_class=JSONResponse)
+def gemini_financial_insights():
+    """Get financial insights and recommendations from Gemini Pro 2.5"""
+    result = get_financial_insights()
+    return JSONResponse(content=result)

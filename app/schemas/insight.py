@@ -1,4 +1,7 @@
 from pydantic import BaseModel
+from typing import Optional
+import datetime
+from pydantic import BaseModel
 from typing import List, Optional
 from decimal import Decimal
 
@@ -55,3 +58,9 @@ class PlutoScore(BaseModel):
     spend_30d: float
     savings_rate: float
     category_diversity: int
+
+class GeminiInsightOut(BaseModel):
+    id: int
+    user_id: int
+    created_at: datetime.datetime
+    insights_json: str

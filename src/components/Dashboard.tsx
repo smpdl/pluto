@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
@@ -6,7 +6,6 @@ import { Button } from './ui/button';
 import { ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign, PiggyBank, CreditCard, Bell, ChevronRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
-// Mock data
 const spendingData = [
   { month: 'Jan', income: 5200, spending: 4800 },
   { month: 'Feb', income: 5200, spending: 4200 },
@@ -16,31 +15,31 @@ const spendingData = [
   { month: 'Jun', income: 5200, spending: 4400 },
 ];
 
-const recommendations = [
-  {
-    id: 1,
-    title: "You're spending 23% less on dining this month",
-    description: "Keep up the great work! You've saved $127 compared to last month.",
-    type: "positive",
-    action: "View Details"
-  },
-  {
-    id: 2,
-    title: "Consider increasing your emergency fund",
-    description: "Aim for 6 months of expenses. You're currently at 3.2 months.",
-    type: "suggestion",
-    action: "Set Goal"
-  },
-  {
-    id: 3,
-    title: "Your investment portfolio is up 8.4%",
-    description: "Great performance this quarter! Consider rebalancing.",
-    type: "positive",
-    action: "Review Portfolio"
-  }
-];
+function useGeminiInsights() {
+  const [insights, setInsights] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-// Marquee ticker data - only shown on home dashboard
+  useEffect(() => {
+    fetch("/insights/gemini-insights")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.insights) {
+          setInsights(data.insights);
+        } else {
+          setError("No insights found");
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError("Failed to fetch insights");
+        setLoading(false);
+      });
+  }, []);
+
+  return { insights, loading, error };
+}
+
 const tickerData = [
   { symbol: 'S&P 500', value: '4,783.45', change: '+0.8%', positive: true },
   { symbol: 'NASDAQ', value: '15,089.90', change: '+1.2%', positive: true },
@@ -53,6 +52,7 @@ const tickerData = [
 ];
 
 export default function Dashboard() {
+  const { insights, loading, error } = useGeminiInsights();
   return (
     <div className="space-y-6">
       {/* Header Stats */}
@@ -106,7 +106,6 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-
         {/* Enhanced Monthly Income Card */}
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6">
@@ -137,7 +136,6 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-
         {/* Enhanced Monthly Spending Card */}
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6">
@@ -167,7 +165,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
-
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Spending vs Income Chart */}
@@ -212,8 +209,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
-        {/* Insights Panel */}
+        {/* Insights Panel - Gemini API */}
         <Card className="border-0 shadow-sm">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -221,27 +217,36 @@ export default function Dashboard() {
               <Bell className="h-4 w-4 text-muted-foreground" />
             </div>
             <CardDescription>
-              Personalized recommendations for you
+              AI-powered financial recommendations
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {recommendations.map((rec) => (
+            {loading && <div className="text-xs text-muted-foreground">Loading insights...</div>}
+            {error && <div className="text-xs text-destructive">{error}</div>}
+            {!loading && !error && insights.length === 0 && (
+              <div className="text-xs text-muted-foreground">No insights available.</div>
+            )}
+            {insights.slice(0, 3).map((rec) => (
               <div key={rec.id} className="space-y-2 p-4 bg-muted/30 rounded-lg">
                 <div className="flex items-start justify-between">
                   <h4 className="text-sm font-medium leading-tight">{rec.title}</h4>
-                  {rec.type === 'positive' && (
+                  {rec.trend_direction === 'up' && (
                     <TrendingUp className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
+                  )}
+                  {rec.trend_direction === 'down' && (
+                    <ArrowDownRight className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {rec.description}
                 </p>
+                {/* Removed extra details for cleaner output */}
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   className="text-xs h-8 text-primary hover:text-primary/80 p-0 justify-start"
                 >
-                  {rec.action}
+                  {rec.action_text}
                   <ChevronRight className="h-3 w-3 ml-1" />
                 </Button>
               </div>
