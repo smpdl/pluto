@@ -8,5 +8,6 @@ class Settings:
     JWT_SECRET = os.getenv("JWT_SECRET", "dev_secret_change_me")
     JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_EXPIRES_SECONDS = int(os.getenv("JWT_EXPIRES_SECONDS", "3600"))
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 settings = Settings()

@@ -8,8 +8,9 @@ import json
 import re
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List, Dict, Any
+from app.config import settings
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+genai.configure(api_key=settings.GEMINI_API_KEY)
 
 def get_all_transactions() -> List[Dict[str, Any]]:
     """Fetches all transactions from the database."""
